@@ -178,7 +178,7 @@ var getMutual = function(idArray, connectUser){
       return;
   }
 }
-
+//this is a relic of a previous iteration
 var loadMutual = function(list, currentFriend){
   var currentMutual = list.pop();
   drawing.addEdge(currentFriend, currentMutual, 'red', true);

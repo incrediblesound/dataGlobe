@@ -85,7 +85,7 @@ function testAPI() {
           q: "SELECT current_location.latitude, current_location.longitude, first_name, last_name, uid, pic_square FROM user WHERE uid = me()"
         },
         function(response){
-          $.post('/api/save-user', {user: response.data}, function(){
+          $.post('/api/save-user', {user: response.data}, function(response){
             login.trigger('render');
           });
           // globeView.render

@@ -434,6 +434,7 @@ Drawing.SphereGraph = function(options) {
     var text = data.message || data.story;
     if(text !== undefined) {
       var text = text.split(' ');
+      //TODO: text = filterText(text)
       for(var i = 0; i < text.length; i++){
         if(text[i].toLowerCase() !== 'the'){
         var materialFront = new THREE.MeshBasicMaterial( { color: 'white' } );
@@ -595,7 +596,7 @@ Drawing.SphereGraph = function(options) {
     // render scene
     renderer.render( scene, camera );
   }
-
+  // TODO: change name of function to refect its real use
   function printInfo(text) {
     var str = '';
     for(var index in info_text) {
@@ -608,20 +609,21 @@ Drawing.SphereGraph = function(options) {
       watched[str] = true;
       var fbId = parseInt(str);
       if(str !== ""){
+        // TODO: check if relay is necessary
           getPic(fbId);
           goToRelay(fbId);
           postExplosion(fbId);
-        }
       }
     }
-
-  function findElement(tree, str){
-    var result = false;
-    for(var i = 0; i < tree.length; i++){
-      if(tree[i].textContent === str){
-        result = true;
-      }
-    }
-    return result;
   }
+  // TODO: remove unneccesary function
+  // function findElement(tree, str){
+  //   var result = false;
+  //   for(var i = 0; i < tree.length; i++){
+  //     if(tree[i].textContent === str){
+  //       result = true;
+  //     }
+  //   }
+  //   return result;
+  // }
 }
