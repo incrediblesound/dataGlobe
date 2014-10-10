@@ -40032,7 +40032,7 @@ var postExplosion = function(id){
 };
 
 var investigatePosts = function(id, posts){
-  drawing.moveOut();
+  //drawing.moveOut();
   if(!posts || !posts.length){
     return;
   } else {
@@ -40379,8 +40379,8 @@ Drawing.SphereGraph = function(options) {
       if(graph.addEdge(fromNode, toNode)){
         drawEdge(fromNode, toNode, color, fade, width);
       }
-    }
-  }
+    };
+  };
   /*
   goToNode is the function used to "fly to friends"
   */
@@ -40417,7 +40417,7 @@ Drawing.SphereGraph = function(options) {
     camera.lookAt( scene.position );
     this.connectToUser(node);
     //$('.info-header').text(node.data.name);
-  }
+  };
 
   this.connectToUser = function(node){
     if(this.userNode){
@@ -40425,16 +40425,16 @@ Drawing.SphereGraph = function(options) {
         drawEdge(node, this.userNode, 'blue', true);
       }
     }
-  }
+  };
 
   this.getCurrent = function(){
     return this.previousNode;
-  }
+  };
 
 
   this.getNode = function(id){
     return graph.getNode(id);
-  }
+  };
 
   this.createGraph = function(current, isUser) {
       //only add if lat and lon are not null
@@ -40456,7 +40456,7 @@ Drawing.SphereGraph = function(options) {
       this.nodes.push(node);
       return node;
     }
-  }
+  };
 
   this.addPost = function(id, post, context){
     var postData = {story: post.story, message: post.message, picture: post.picture};
@@ -40469,7 +40469,7 @@ Drawing.SphereGraph = function(options) {
     graph.addNode(node);
     drawPost(source, node, context);
     return node;
-  }
+  };
 
   this.createLayout = function(){
     var layout_options = {};
@@ -40491,7 +40491,7 @@ Drawing.SphereGraph = function(options) {
     graph.layout = new Layout.ForceDirected(graph, layout_options);
     graph.layout.init();
     graph.layout.generate();
-  }
+  };
 
   this.addUser = function(user, connect){
     connect = connect || false;
@@ -40514,7 +40514,7 @@ Drawing.SphereGraph = function(options) {
         }
       }
     }
-  }
+  };
 
   // Create a node object and add it to the scene.
 
@@ -40679,7 +40679,7 @@ Drawing.SphereGraph = function(options) {
   };
 
   function filterText(text){
-    var blackList = ['the','liked'];
+    var blackList = ['the','liked', 'commented'];
     var result = [];
     for(var i = 0; i < text.length; i++){
       var word = text[i];
@@ -40735,7 +40735,7 @@ Drawing.SphereGraph = function(options) {
     if(fade){
       curvedLine.material.transparent = true;
       createjs.Tween.get(curvedLine.material).wait(5000).to({opacity: 0}, 5000).call(onComplete, [curvedLine]);
-    };
+    }
     scene.add(curvedLine);
   };
 
@@ -40754,35 +40754,35 @@ Drawing.SphereGraph = function(options) {
     render();
     if(that.show_info) {
       printInfo();
-    };
-  };
+    }
+  }
 
   function render() {
     // Generate layout if not finished
     if(graph.layout){
       if(!graph.layout.finished) {
         graph.layout.generate();
-      };
-    };
+      }
+    }
 
     // Update position of lines (edges)
     for(var i=0; i<geometries.length; i++) {
       geometries[i].verticesNeedUpdate = true;
-    };
+    }
 
     // set lookat of nodes to camera
     for(var i=0; i<graph.nodes.length; i++) {
       // graph.nodes[i].data.draw_object.lookAt(camera.position);
-    };
+    }
 
     // render selection
     if(that.selection) {
       object_selection.render(scene, camera);
-    };
+    }
 
     // render scene
     renderer.render( scene, camera );
-  };
+  }
   // TODO: change name of function to refect its real use
   function printInfo(text) {
     var str = '';
@@ -40800,8 +40800,8 @@ Drawing.SphereGraph = function(options) {
           getPic(fbId);
           goToRelay(fbId);
           postExplosion(fbId);
-      };
-    };
+      }
+    }
   };
 };
 ;var initialize3d = function(){

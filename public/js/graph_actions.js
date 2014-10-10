@@ -76,7 +76,7 @@ var postExplosion = function(id){
 };
 
 var investigatePosts = function(id, posts){
-  drawing.moveOut();
+  //drawing.moveOut();
   if(!posts || !posts.length){
     return;
   } else {
