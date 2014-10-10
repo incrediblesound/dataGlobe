@@ -78,6 +78,21 @@ Graph.prototype.addEdge = function(source, target) {
   return false;
 };
 
+Graph.prototype.removeEdge = function(source, target) {
+  for(var i = 0; i < this.edges.length; i++){
+    var edge = this.edges[i];
+    if(edge.source.id === source.id && edge.target.id === target.id){
+      this.edges.splice(i, 1);
+    }
+  }
+  for(var k = 0; k < source.nodesTo.length; k++){
+    var targetNode = source.nodesTo[k];
+    if(targetNode.id === target.id){
+      source.nodesTo.splice(k, 1);
+    }
+  }
+}
+
 Graph.prototype.reached_limit = function() {
   if(this.options.limit != undefined)
     return this.options.limit <= this.nodes.length;

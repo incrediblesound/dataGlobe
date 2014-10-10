@@ -85,7 +85,7 @@ function testAPI() {
           q: "SELECT current_location.latitude, current_location.longitude, first_name, last_name, uid, pic_square FROM user WHERE uid = me()"
         },
         function(response){
-          $.post('/api/save-user', {user: response.data}, function(){
+          $.post('/api/save-user', {user: response.data}, function(response){
             login.trigger('render');
           });
           // globeView.render
@@ -39899,6 +39899,21 @@ Graph.prototype.addEdge = function(source, target) {
   return false;
 };
 
+Graph.prototype.removeEdge = function(source, target) {
+  for(var i = 0; i < this.edges.length; i++){
+    var edge = this.edges[i];
+    if(edge.source.id === source.id && edge.target.id === target.id){
+      this.edges.splice(i, 1);
+    }
+  }
+  for(var k = 0; k < source.nodesTo.length; k++){
+    var targetNode = source.nodesTo[k];
+    if(targetNode.id === target.id){
+      source.nodesTo.splice(k, 1);
+    }
+  }
+}
+
 Graph.prototype.reached_limit = function() {
   if(this.options.limit != undefined)
     return this.options.limit <= this.nodes.length;
@@ -39939,32 +39954,42 @@ function Edge(source, target) {
   this.target = target;
   this.data = {};
 }
-;var flyToNext = function(cb){
+;//make into object that keeps track of friends and can give you "next friend"
+var nextFunc = {
+  last: '',
+  friends: '',
+  init: function(friends){
+    this.friends = friends;
+  },
+  nextFriend: function(){
+    var i = Math.floor(Math.random()*this.friends.length);
+    current = this.friends[i];
+    currentNode = drawing.getNode(current);
+    while(!currentNode || current === this.last){
+      i += 1;
+      if(i === this.friends.length){
+        i = 0;
+      }
+      current = this.friends[i];
+      currentNode = drawing.getNode(current);
+    }
+    //go to next user on globe and draw mutual friends
+    window.currentId = current
+    this.last = current;
+    drawing.goToNode(current);
+    getPic(current);
+    goToRelay(current);
+    postExplosion(current);
+  }
+}
+
+var flyToNext = function(){
   $.get('/api/get-user').then(function(response){
-      var friends = JSON.parse(response).friends;
-      var last;
-      cb(function(){
-          var i = Math.floor(Math.random()*friends.length);
-          current = friends[i];
-          currentNode = drawing.getNode(current);
-          while(!currentNode || current === last){
-            i += 1;
-            if(i === friends.length){
-              i = 0;
-            }
-            current = friends[i];
-            currentNode = drawing.getNode(current);
-          }
-          //go to next user on globe and draw mutual friends
-          window.currentId = current
-          last = current;
-          drawing.goToNode(current);
-          getPic(current);
-          goToRelay(current);
-          postExplosion(current);
-      })
+      nextFunc.init(JSON.parse(response).friends);
   })
 };
+// TODO: Brilliant but hurts everyone's brains James
+
 
 var getAllPhotos = function(id){
   id = id || window.currentId;
@@ -39978,28 +40003,6 @@ var getAllPhotos = function(id){
       //if there are photos, display them
       getPhotos(data.photos.data, id);
     }
-  })
-};
-
-var postExplosion = function(id){
-    FBData.get('newsFeed', id, function(data){
-      var myPosts = JSON.parse(data);
-      if(myPosts.posts){
-        myPosts = myPosts.posts.data;
-        investigatePosts(id, myPosts);
-      }
-    })
-};
-
-var batchPhotos = function(idArray){
-  var dataArray = [];
-  if(idArray.length){
-    idArray.forEach(function(id){
-      dataArray.push({method: 'GET', relative_url: '/'+id});
-    })
-  }
-  FBData.batch(dataArray, function(data){
-    console.log(data);
   })
 };
 
@@ -40018,14 +40021,64 @@ var getPhotos = function (array, id){
   }
 };
 
-var nextFunc;
-flyToNext(function(next){
-  nextFunc = next;
-});
+var postExplosion = function(id){
+    FBData.get('newsFeed', id, function(data){
+      var myPosts = JSON.parse(data);
+      if(myPosts.posts){
+        myPosts = myPosts.posts.data;
+        investigatePosts(id, myPosts);
+      }
+    })
+};
 
+var investigatePosts = function(id, posts){
+  drawing.moveOut();
+  if(!posts || !posts.length){
+    return;
+  } else {
+    if(posts.length > 12){
+      posts = posts.slice(0,12);
+    }
+    console.log(posts);
+    // TODO: if condition for clearing interval
+    setInterval(function(){
+      if(posts.length){
+        drawPosts(id, posts.pop());
+      }
+    }, 300)
+  }
+}
+
+var drawPosts = function(id, current){
+  current = drawing.addPost(id, current, drawing);
+  FBData.getPostLikes(current.id, function(data){
+    data = data.data;
+    for(var l = 0; l < data.length; l++){
+      var liker = data[l];
+      liker = drawing.getNode(liker.id);
+      if(drawing.getNode(liker.id) !== undefined){
+        drawing.addEdge(current.id, liker.id, 'green', true);
+      }
+    }
+  })
+}
+// TODO: unused as FB API v1.0 doesn't allow this call to be batched
+// var batchPhotos = function(idArray){
+//   var dataArray = [];
+//   if(idArray.length){
+//     idArray.forEach(function(id){
+//       dataArray.push({method: 'GET', relative_url: '/'+id});
+//     })
+//   }
+//   FBData.batch(dataArray, function(data){
+//     console.log(data);
+//   })
+// };
+
+// TODO: separate keyboard UI into separate controller. note: a couple hours to implement
 $(document).on('keydown', function( event ){
   if(event.which === 32){ // space key
-    nextFunc();
+    nextFunc.nextFriend();
   }
   // else if(event.which === 13){ // enter key
   //   getAllPhotos();
@@ -40042,10 +40095,10 @@ $(document).on('keydown', function( event ){
   // }
 })
 
-///// for info display //////////////////////////////////////////////////
 var infoHTMLlog = [];
 var $infoHTML = $('<div><div class="info-data img-box"></div></div>');
 
+// TODO: name change. displayProfilePic?
 function displayInfo(data, isUrl){
   var key;
   if(isUrl){
@@ -40053,10 +40106,10 @@ function displayInfo(data, isUrl){
   } else {
     key = data.source;
   }
+  //TODO: Cache these variables
   var $infoHTMLClone = $infoHTML.clone();
   var $info = $infoHTMLClone.find('.info-data');
 
-  //var header = $infoHTMLClone.find('.info-header');
   if($('.panel-wrapper').children().length){
     $($('.panel-wrapper').children()[0]).addClass('zoomOut');
   }
@@ -40072,7 +40125,6 @@ function displayInfo(data, isUrl){
   }
   image.src = key;
 };
-//////////////////////////////////////////////////////////////////////////
 
 var getPic = function(id){
   FBData.get('getProfilePic', id, function(photo){
@@ -40094,7 +40146,7 @@ var goToRelay = function(id){
 var getMutual = function(idArray, connectUser){
   if(connectUser && drawing !== undefined){
     var node = drawing.getNode(idArray);
-    if(node==undefined){
+    if(!node){
       console.log("node not found");
     } else {
       drawing.connectToUser(node);
@@ -40119,7 +40171,7 @@ var getMutual = function(idArray, connectUser){
       return;
   }
 }
-
+//this is a relic of a previous iteration
 var loadMutual = function(list, currentFriend){
   var currentMutual = list.pop();
   drawing.addEdge(currentFriend, currentMutual, 'red', true);
@@ -40128,42 +40180,6 @@ var loadMutual = function(list, currentFriend){
   } else {
     return;
   }
-}
-
-var investigatePosts = function(id, posts){
-  drawing.moveOut();
-  if(!posts || !posts.length){
-    return;
-  } else {
-    if(posts.length > 12){
-      posts = posts.slice(0,12);
-    }
-    console.log(posts);
-    setInterval(function(){
-      if(posts.length){
-        drawPosts(id, posts.pop());
-      }
-    }, 300)
-  }
-}
-
-var drawPosts = function(id, current){
-  current = drawing.addPost(id, current, drawing);
-  FBData.getPostLikes(current.id, function(data){
-    data = data.data;
-    for(var l = 0; l < data.length; l++){
-      var liker = data[l];
-      liker = drawing.getNode(liker.id);
-      if(drawing.getNode(liker.id) !== undefined){
-        drawing.addEdge(current.id, liker.id, 'green', true);
-      }
-    }
-    if(posts.length){
-      return drawPosts(id, posts);
-    } else {
-      return;
-    }
-  })
 }
 ;var Drawing = Drawing || {};
 
@@ -40534,7 +40550,6 @@ Drawing.SphereGraph = function(options) {
   }
 
     function drawPost(source, node, context) {
-
       var ball = new THREE.SphereGeometry(20, 10, 10);
       material = new THREE.MeshBasicMaterial({ color: 'yellow' });
       draw_object = new THREE.Mesh(ball, material);
@@ -40544,7 +40559,7 @@ Drawing.SphereGraph = function(options) {
       node.data.draw_object = draw_object;
       scene.add( node.data.draw_object );
       node.data.draw_object.lookAt(scene.position);
-      
+
       var finalX = node.position.x;
       var finalY = node.position.y;
       var finalZ = node.position.z;
@@ -40576,7 +40591,7 @@ Drawing.SphereGraph = function(options) {
       })
 
       //this code stays the same, I use the fbId to get friend data on mouseover
-      node.layout = {}
+      node.layout = {};
       node.layout.max_X = 90;
       node.layout.min_X = -90;
       node.layout.max_Y = 180;
@@ -40596,31 +40611,26 @@ Drawing.SphereGraph = function(options) {
     var data = node.data.post;
     var onComplete = function(object){
       scene.remove(object);
-      renderer.render( scene, camera );
-    }
+    };
     var text = data.message || data.story;
     if(text !== undefined) {
       var text = text.split(' ');
+      text = filterText(text);
       for(var i = 0; i < text.length; i++){
-        if(text[i].toLowerCase() !== 'the'){
         var materialFront = new THREE.MeshBasicMaterial( { color: 'white' } );
         var textGeom = new THREE.TextGeometry( text[i], {
           size: 30, height: 4, curveSegments: 3,
           font: "helvetiker", weight: "bold", style: "normal",
           bevelEnabled: false, material: 0
           });
-        
         var textMesh = new THREE.Mesh(textGeom, materialFront );
-        
         textGeom.computeBoundingBox();
         var textWidth = textGeom.boundingBox.max.x - textGeom.boundingBox.min.x;
-        
         textMesh.position.set( node.position.x, node.position.y, node.position.z );
         textMesh.lookAt(camera.position);
         textMesh.data = 'TEXT';
         scene.add(textMesh);
-        createjs.Tween.get(textMesh.position).to({x: pos.x*(2+rnd()), y: pos.y*(2+rnd()), z: pos.z*(2+rnd())}, 9000).call(onComplete, [textMesh]);       
-        }
+        createjs.Tween.get(textMesh.position).to({x: pos.x*(2+rnd()), y: pos.y*(2+rnd()), z: pos.z*(2+rnd())}, 9000).call(onComplete, [textMesh]);
       }
     }
     if(data.picture){
@@ -40639,15 +40649,14 @@ Drawing.SphereGraph = function(options) {
         createjs.Tween.get(image.position)
         .to({x: pos.x*(1+rnd()), y: pos.y*(1+rnd()), z: pos.z*(1+rnd())}, 8000)
         .call(onComplete, [image]);
-      }
+      };
       texture.src = data.picture;
-    }
-  }
+    };
+  };
 
   this.displayPhoto = function(data, node){
     var onComplete = function(object){
       scene.remove(object);
-      renderer.render( scene, camera );
     }
     var pos = camera.position;
     var rnd = Math.random;
@@ -40664,10 +40673,22 @@ Drawing.SphereGraph = function(options) {
       scene.add(image);
       createjs.Tween.get(image.position)
       .to({x: pos.x*(0.9+(rnd()*0.4)), y: pos.y*(0.9+(rnd()*0.4)), z: pos.z*(0.9+(rnd()*0.4))}, 8000)
-      .call(onComplete, [image]);
+      .call(onComplete, [image]); // Tween hijacked .call() -> .call( callback, parameter )
     }
     texture.src = data.picture;
-  }
+  };
+
+  function filterText(text){
+    var blackList = ['the','liked'];
+    var result = [];
+    for(var i = 0; i < text.length; i++){
+      var word = text[i];
+      if(word.length > 3 && blackList.indexOf(word.toLowerCase()) === -1){
+        result.push(word);
+      }
+    }
+    return result;
+  };
 
   // Create an edge object (line) and add it to the scene.
   function drawEdge(source, target, color, fade, width) {
@@ -40709,21 +40730,21 @@ Drawing.SphereGraph = function(options) {
     curvedLine.lookAt(scene.position);
     var onComplete = function(curvedLine){
       scene.remove(curvedLine);
-      renderer.render( scene, camera );
-    }
+      graph.removeEdge(source, target);
+    };
     if(fade){
       curvedLine.material.transparent = true;
       createjs.Tween.get(curvedLine.material).wait(5000).to({opacity: 0}, 5000).call(onComplete, [curvedLine]);
-    }
+    };
     scene.add(curvedLine);
-  }
+  };
 
   // moves the camera away for post explosion
-  this.moveOut = function(){
-    // ***** maybe keep a boolean to check if the camera has already moved out
-    //var newPos = {x: camera.position.x*1.4, y: camera.position.y*1.25, z: camera.position.z*1.3};
-    //createjs.Tween.get(camera.position).to(newPos, 4000);
-  }
+  // this.moveOut = function(){
+  //   // ***** maybe keep a boolean to check if the camera has already moved out
+  //   //var newPos = {x: camera.position.x*1.4, y: camera.position.y*1.25, z: camera.position.z*1.3};
+  //   //createjs.Tween.get(camera.position).to(newPos, 4000);
+  // }
 
   function animate() {
     requestAnimationFrame( animate );
@@ -40733,36 +40754,36 @@ Drawing.SphereGraph = function(options) {
     render();
     if(that.show_info) {
       printInfo();
-    }
-  }
+    };
+  };
 
   function render() {
     // Generate layout if not finished
     if(graph.layout){
       if(!graph.layout.finished) {
         graph.layout.generate();
-      }
-    }
+      };
+    };
 
     // Update position of lines (edges)
     for(var i=0; i<geometries.length; i++) {
       geometries[i].verticesNeedUpdate = true;
-    }
+    };
 
     // set lookat of nodes to camera
     for(var i=0; i<graph.nodes.length; i++) {
       // graph.nodes[i].data.draw_object.lookAt(camera.position);
-    }
+    };
 
     // render selection
     if(that.selection) {
       object_selection.render(scene, camera);
-    }
+    };
 
     // render scene
     renderer.render( scene, camera );
-  }
-
+  };
+  // TODO: change name of function to refect its real use
   function printInfo(text) {
     var str = '';
     for(var index in info_text) {
@@ -40775,23 +40796,14 @@ Drawing.SphereGraph = function(options) {
       watched[str] = true;
       var fbId = parseInt(str);
       if(str !== ""){
+        // TODO: check if relay is necessary
           getPic(fbId);
           goToRelay(fbId);
           postExplosion(fbId);
-        }
-      }
-    }
-
-  function findElement(tree, str){
-    var result = false;
-    for(var i = 0; i < tree.length; i++){
-      if(tree[i].textContent === str){
-        result = true;
-      }
-    }
-    return result;
-  }
-}
+      };
+    };
+  };
+};
 ;var initialize3d = function(){
   drawing = new Drawing.SphereGraph({numNodes: 50, showStats: true, showInfo: true});
   // this will kickoff Facebook API get requests and subsequent posts to app server
@@ -40804,7 +40816,8 @@ Drawing.SphereGraph = function(options) {
   // this will kickoff WebGL rendering
   $.get('/api/get-user').then(function(response){
     var user = JSON.parse(response);
-    friendsList = user.friends;
+
+    // TODO: creategraph->addNode or addUserNode
     userNode = drawing.createGraph(user, true);
   })
 
@@ -40815,9 +40828,19 @@ Drawing.SphereGraph = function(options) {
 			if(friends.length){
 				drawing.createGraph(friends.pop());
 			}
+      /*
+      TODO: bjhb
+      check if friends list empty && maybe 15s later then clear interval
+      var idleTime =
+      if(friends.length){
+        drawing.createGraph(friends.pop());
+      } else if(friends.length === 0 && idleTime){
+
+      }
+      */
 		}, 0)
 	});
-    
+
   });
 
 }
@@ -40842,6 +40865,7 @@ Drawing.SphereGraph = function(options) {
     url: '/api/save-mutual',
     endpoint: '/me'
   },
+  // TODO: rename to posts
   newsFeed: {
     queryString: ['posts{id,type,from,to,with_tags,created_time,message,story,link,name,tags,picture}'],
     endpoint: false

@@ -1,35 +1,39 @@
+//make into object that keeps track of friends and can give you "next friend"
+var nextFunc = {
+  last: '',
+  friends: '',
+  init: function(friends){
+    this.friends = friends;
+  },
+  nextFriend: function(){
+    var i = Math.floor(Math.random()*this.friends.length);
+    current = this.friends[i];
+    currentNode = drawing.getNode(current);
+    while(!currentNode || current === this.last){
+      i += 1;
+      if(i === this.friends.length){
+        i = 0;
+      }
+      current = this.friends[i];
+      currentNode = drawing.getNode(current);
+    }
+    //go to next user on globe and draw mutual friends
+    window.currentId = current
+    this.last = current;
+    drawing.goToNode(current);
+    getPic(current);
+    goToRelay(current);
+    postExplosion(current);
+  }
+}
 
-var flyToNext = function(cb){
+var flyToNext = function(){
   $.get('/api/get-user').then(function(response){
-      var friends = JSON.parse(response).friends;
-      var last;
-      cb(function(){
-          var i = Math.floor(Math.random()*friends.length);
-          current = friends[i];
-          currentNode = drawing.getNode(current);
-          while(!currentNode || current === last){
-            i += 1;
-            if(i === friends.length){
-              i = 0;
-            }
-            current = friends[i];
-            currentNode = drawing.getNode(current);
-          }
-          //go to next user on globe and draw mutual friends
-          window.currentId = current
-          last = current;
-          drawing.goToNode(current);
-          getPic(current);
-          goToRelay(current);
-          postExplosion(current);
-      })
+      nextFunc.init(JSON.parse(response).friends);
   })
 };
 // TODO: Brilliant but hurts everyone's brains James
-var nextFunc;
-flyToNext(function(next){
-  nextFunc = next;
-});
+
 
 var getAllPhotos = function(id){
   id = id || window.currentId;
@@ -100,12 +104,6 @@ var drawPosts = function(id, current){
         drawing.addEdge(current.id, liker.id, 'green', true);
       }
     }
-    // TODO: probably a relic. mark for deletion
-    // if(posts.length){
-    //   return drawPosts(id, posts);
-    // } else {
-    //   return;
-    // }
   })
 }
 // TODO: unused as FB API v1.0 doesn't allow this call to be batched
@@ -124,7 +122,7 @@ var drawPosts = function(id, current){
 // TODO: separate keyboard UI into separate controller. note: a couple hours to implement
 $(document).on('keydown', function( event ){
   if(event.which === 32){ // space key
-    nextFunc();
+    nextFunc.nextFriend();
   }
   // else if(event.which === 13){ // enter key
   //   getAllPhotos();
@@ -141,7 +139,6 @@ $(document).on('keydown', function( event ){
   // }
 })
 
-///// for info display //////////////////////////////////////////////////
 var infoHTMLlog = [];
 var $infoHTML = $('<div><div class="info-data img-box"></div></div>');
 
@@ -153,6 +150,7 @@ function displayInfo(data, isUrl){
   } else {
     key = data.source;
   }
+  //TODO: Cache these variables
   var $infoHTMLClone = $infoHTML.clone();
   var $info = $infoHTMLClone.find('.info-data');
 
@@ -171,7 +169,6 @@ function displayInfo(data, isUrl){
   }
   image.src = key;
 };
-//////////////////////////////////////////////////////////////////////////
 
 var getPic = function(id){
   FBData.get('getProfilePic', id, function(photo){
@@ -193,7 +190,7 @@ var goToRelay = function(id){
 var getMutual = function(idArray, connectUser){
   if(connectUser && drawing !== undefined){
     var node = drawing.getNode(idArray);
-    if(node==undefined){
+    if(!node){
       console.log("node not found");
     } else {
       drawing.connectToUser(node);

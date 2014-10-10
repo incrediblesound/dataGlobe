@@ -367,7 +367,6 @@ Drawing.SphereGraph = function(options) {
   }
 
     function drawPost(source, node, context) {
-
       var ball = new THREE.SphereGeometry(20, 10, 10);
       material = new THREE.MeshBasicMaterial({ color: 'yellow' });
       draw_object = new THREE.Mesh(ball, material);
@@ -409,7 +408,7 @@ Drawing.SphereGraph = function(options) {
       })
 
       //this code stays the same, I use the fbId to get friend data on mouseover
-      node.layout = {}
+      node.layout = {};
       node.layout.max_X = 90;
       node.layout.min_X = -90;
       node.layout.max_Y = 180;
@@ -429,32 +428,26 @@ Drawing.SphereGraph = function(options) {
     var data = node.data.post;
     var onComplete = function(object){
       scene.remove(object);
-      renderer.render( scene, camera );
-    }
+    };
     var text = data.message || data.story;
     if(text !== undefined) {
       var text = text.split(' ');
-      //TODO: text = filterText(text)
+      text = filterText(text);
       for(var i = 0; i < text.length; i++){
-        if(text[i].toLowerCase() !== 'the'){
         var materialFront = new THREE.MeshBasicMaterial( { color: 'white' } );
         var textGeom = new THREE.TextGeometry( text[i], {
           size: 30, height: 4, curveSegments: 3,
           font: "helvetiker", weight: "bold", style: "normal",
           bevelEnabled: false, material: 0
           });
-
         var textMesh = new THREE.Mesh(textGeom, materialFront );
-
         textGeom.computeBoundingBox();
         var textWidth = textGeom.boundingBox.max.x - textGeom.boundingBox.min.x;
-
         textMesh.position.set( node.position.x, node.position.y, node.position.z );
         textMesh.lookAt(camera.position);
         textMesh.data = 'TEXT';
         scene.add(textMesh);
         createjs.Tween.get(textMesh.position).to({x: pos.x*(2+rnd()), y: pos.y*(2+rnd()), z: pos.z*(2+rnd())}, 9000).call(onComplete, [textMesh]);
-        }
       }
     }
     if(data.picture){
@@ -473,16 +466,14 @@ Drawing.SphereGraph = function(options) {
         createjs.Tween.get(image.position)
         .to({x: pos.x*(1+rnd()), y: pos.y*(1+rnd()), z: pos.z*(1+rnd())}, 8000)
         .call(onComplete, [image]);
-      }
+      };
       texture.src = data.picture;
-    }
-  }
+    };
+  };
 
   this.displayPhoto = function(data, node){
     var onComplete = function(object){
       scene.remove(object);
-      // TODO: Note: check what happens with and without render call
-      // renderer.render( scene, camera );
     }
     var pos = camera.position;
     var rnd = Math.random;
@@ -502,7 +493,19 @@ Drawing.SphereGraph = function(options) {
       .call(onComplete, [image]); // Tween hijacked .call() -> .call( callback, parameter )
     }
     texture.src = data.picture;
-  }
+  };
+
+  function filterText(text){
+    var blackList = ['the','liked'];
+    var result = [];
+    for(var i = 0; i < text.length; i++){
+      var word = text[i];
+      if(word.length > 3 && blackList.indexOf(word.toLowerCase()) === -1){
+        result.push(word);
+      }
+    }
+    return result;
+  };
 
   // Create an edge object (line) and add it to the scene.
   function drawEdge(source, target, color, fade, width) {
@@ -544,21 +547,21 @@ Drawing.SphereGraph = function(options) {
     curvedLine.lookAt(scene.position);
     var onComplete = function(curvedLine){
       scene.remove(curvedLine);
-      renderer.render( scene, camera );
-    }
+      graph.removeEdge(source, target);
+    };
     if(fade){
       curvedLine.material.transparent = true;
       createjs.Tween.get(curvedLine.material).wait(5000).to({opacity: 0}, 5000).call(onComplete, [curvedLine]);
-    }
+    };
     scene.add(curvedLine);
-  }
+  };
 
   // moves the camera away for post explosion
-  this.moveOut = function(){
-    // ***** maybe keep a boolean to check if the camera has already moved out
-    //var newPos = {x: camera.position.x*1.4, y: camera.position.y*1.25, z: camera.position.z*1.3};
-    //createjs.Tween.get(camera.position).to(newPos, 4000);
-  }
+  // this.moveOut = function(){
+  //   // ***** maybe keep a boolean to check if the camera has already moved out
+  //   //var newPos = {x: camera.position.x*1.4, y: camera.position.y*1.25, z: camera.position.z*1.3};
+  //   //createjs.Tween.get(camera.position).to(newPos, 4000);
+  // }
 
   function animate() {
     requestAnimationFrame( animate );
@@ -568,35 +571,35 @@ Drawing.SphereGraph = function(options) {
     render();
     if(that.show_info) {
       printInfo();
-    }
-  }
+    };
+  };
 
   function render() {
     // Generate layout if not finished
     if(graph.layout){
       if(!graph.layout.finished) {
         graph.layout.generate();
-      }
-    }
+      };
+    };
 
     // Update position of lines (edges)
     for(var i=0; i<geometries.length; i++) {
       geometries[i].verticesNeedUpdate = true;
-    }
+    };
 
     // set lookat of nodes to camera
     for(var i=0; i<graph.nodes.length; i++) {
       // graph.nodes[i].data.draw_object.lookAt(camera.position);
-    }
+    };
 
     // render selection
     if(that.selection) {
       object_selection.render(scene, camera);
-    }
+    };
 
     // render scene
     renderer.render( scene, camera );
-  }
+  };
   // TODO: change name of function to refect its real use
   function printInfo(text) {
     var str = '';
@@ -614,17 +617,7 @@ Drawing.SphereGraph = function(options) {
           getPic(fbId);
           goToRelay(fbId);
           postExplosion(fbId);
-      }
-    }
-  }
-  // TODO: remove unneccesary function
-  // function findElement(tree, str){
-  //   var result = false;
-  //   for(var i = 0; i < tree.length; i++){
-  //     if(tree[i].textContent === str){
-  //       result = true;
-  //     }
-  //   }
-  //   return result;
-  // }
-}
+      };
+    };
+  };
+};
